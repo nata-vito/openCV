@@ -1,24 +1,42 @@
 import cv2 as cv
 import mediapipe as mp
-import time
 
-# Image source
-cap = cv.VideoCapture(1)
+class handDetector():
+    def __init__(self, mode=False, maxHands=2, modelComplexity=1, detectionCon=0.5, trackCon=0.5):
+        self.mode               = mode
+        self.maxHands           = maxHands
+        self.modelComplexity    = modelComplexity
+        self.detectionCon       = detectionCon
+        self.trackCon           = trackCon
+        self.mpHands            = mp.solutions.hands
+        self.hands              = self.mpHands.Hands(self.mode, self.maxHands, self.modelComplexity, self.detectionCon, self.trackCon)
+        self.mpDraw             = mp.solutions.drawing_utils
 
-# Hands mapping object
-mpHands = mp.solutions.hands
-hands = mpHands.Hands() # Only RGB img
+    def findHands(self, img, draw=True):
+        imgRGB = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+        self.results = self.hands.process(imgRGB)
 
-while True:
-    # Frame captured from camera
-    succes, frame = cap.read()  
+        if self.results.multi_hand_landmarks:
+            for handLms in self.results.multi_hand_landmarks:
+                if draw: self.mpDraw.draw_landmarks(img, handLms, self.mpHands.HAND_CONNECTIONS)
 
-    # Convert image from BGR format to RGB format
-    frameRgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-    results = hands.process(frameRgb)
+        return img
 
-    print(results)
+    def findPosition(self, img, handNo=0, draw=True):
+        lmList = []
 
-    # Show image
-    cv.imshow("Frame", frame)
-    cv.waitKey(1)
+        if self.results.multi_hand_landmarks:
+            myHand = self.results.multi_hand_landmarks[handNo]
+
+            # Hand Labeling
+            for id, hand_handedness in enumerate(self.results.multi_handedness):
+                self.label = hand_handedness.classification[0].label
+
+            for id, lm in enumerate(myHand.landmark):
+                h, w, c = img.shape
+                cx, cy = int(lm.x * w), int(lm.y * h)
+                lmList.append([id, cx, cy])
+
+                if draw: cv.circle(img, (cx, cy), 5, (255, 0, 0), cv.FILLED)
+            
+        return lmList
