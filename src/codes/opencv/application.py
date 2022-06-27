@@ -1,16 +1,18 @@
-from distutils.command.sdist import sdist
+from PIL import ImageGrab
 import cv2 as cv
 import time
 import os
+import numpy as np
 import hand_tracking as ht
+from api_request import FireRise
 
 # Camera capture
 cap         = cv.VideoCapture(1)
 i           = 0
-tracking    = ht.handDetector(detectionCon=0.75)
+tracking    = ht.handDetector(detectionCon=0.75)    
 ids         = [4, 8, 12, 16, 20]
 
-if(cap.isOpened() == False):
+""" if(cap.isOpened() == False):
     print("Error openning the video")
 else: 
     # Frame rate info
@@ -19,14 +21,18 @@ else:
 
     # Frame count
     frame_count = cap.get(7)
-    print('Frame Count: ', frame_count)
+    print('Frame Count: ', frame_count) """
 
 
-while(cap.isOpened()):
+while True:
     ret, frame  = cap.read()
+    #img = ImageGrab.grab(bbox=(300,100,800,800))
+    frame = np.array(frame)   
+    frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
     contour     = tracking.findHands(frame)
     pose        = tracking.findPosition(frame)
     i          += 1
+    
 
     if len(pose) != 0:
         fingers = []
@@ -49,23 +55,31 @@ while(cap.isOpened()):
 
         # 4 Fingers
         for id in range(1, 5):
-            # Check finger reference points to define hand is open or not
+            # Check finger reference points to define hand is openq or not
             if pose[ids[id]][2] < pose[ids[id] - 2][2]:
                 fingers.append(1)
             else: 
                 fingers.append(0)
         
         print(fingers)
+        api = FireRise("https://myhand-ff333-default-rtdb.firebaseio.com/", fingers)
+        api.putData("mao", True, None, fingers)
+
+        cv.imshow('Frame', frame)
+        key = cv.waitKey(20)
+
+        if key == ord('q'):
+            break
 
 
-    if ret:
+    """ if ret:
         cv.imshow('Frame', frame)
         key = cv.waitKey(20)
 
         if key == ord('q'):
             break
     else:
-        break
+        break """
 
-cap.release()
+#cap.release()
 cv.destroyAllWindows()
